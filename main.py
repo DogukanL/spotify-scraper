@@ -3,8 +3,6 @@ from spotipy.oauth2 import SpotifyOAuth
 from credentials import *
 from os.path import isdir, exists
 from os import mkdir
-import sys
-from time import sleep
 from playlist import Playlist
 from track import Track
 from csv import DictWriter
