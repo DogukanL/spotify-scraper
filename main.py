@@ -6,22 +6,11 @@ from os import mkdir
 from playlist import Playlist
 from track import Track
 from csv import DictWriter
-import pandas as pd
-from itertools import islice
 import argparse
 
 """
 Scrapes spotify users songs and audio features and writes them to a csv file
 """
-
-
-def to_chunks(iterable, chunk_size):
-    it = iter(iterable)
-    piece = list(islice(it, chunk_size))
-    while piece:
-        yield piece
-        piece = list(islice(it, chunk_size))
-
 
 def get_prefix(sp, user_id):
     user = sp.user(user_id)
@@ -51,52 +40,30 @@ def get_tracks_from_playlist(sp, playlist_id):
             tracks = sp.next(tracks)
         else:
             tracks = None
-            
+
 def get_features(sp, user):
     prefix = get_prefix(sp, user)
     path = f'./data/{prefix}_features.csv'
-        
-    features_frame = pd.DataFrame(columns=['id', 'danceability', 'energy', 'key',
-                                           'loudness', 'mode', 'speechiness',
-                                           'acousticness', 'instrumentalness',
-                                           'liveness', 'valence', 'tempo',
-                                           'type', 'uri', 'track_href',
-                                           'analysis_url', 'duration_ms', 'time_signature'])
-    features_frame.set_index('id')
+    
     print(f'Getting audio features for {prefix}...')
-    
-    for playlist in get_playlists(sp, user):
-        for tracks in get_tracks_from_playlist(sp, playlist.id):
-            # get ids of tracks
-            ids = [track['track']['id'] for track in tracks]
-            # remove None
-            ids = list(
-                filter(
-                    lambda n: n is not None, ids
-                )
-            )
-            # get track features
-            data = sp.audio_features(ids)
-            # filter data in case there are empty tracks
-            data = list(
-                filter(
-                    lambda n: n is not None, data
-                )
-            )
+    with open(path, 'w+') as file:
+        fieldnames = ('id', 'danceability', 'energy',
+                     'key', 'loudness', 'mode', 'speechiness',
+                     'acousticness', 'instrumentalness', 'liveness',
+                     'valence', 'tempo')
+        writer = DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        for playlist in get_playlists(sp, user):
+            for tracks in get_tracks_from_playlist(sp, playlist.id):
+                # get ids of tracks
+                ids = [track['track']['id'] for track in tracks]
+                # remove None
+                ids = tuple(id for id in ids if id is not None)
+                data = [{k: track[k] for k in fieldnames}
+                            for track in sp.audio_features(ids) if track is not None]
+                writer.writerows(data)
+    print(f'Done with audio features for {prefix}...')
 
-            frame = pd.DataFrame(data)
-            cols = frame.columns.to_list()
-            cols.insert(0, cols.pop(cols.index('id')))
-            frame = frame[cols]
-            frame.set_index('id')
-
-            features_frame = pd.concat([features_frame, frame], ignore_index=True)
-
-    features_frame = features_frame.drop(columns=['type', 'uri', 'track_href',
-                                                      'analysis_url', 'time_signature'])
-    features_frame.to_csv(path, index=False)
-    print(f'Done with features for {prefix}')
-    
 def get_tracks(sp, user):
     prefix = get_prefix(sp, user)
     path = f'./data/{prefix}_tracks.csv'
