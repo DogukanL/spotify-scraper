@@ -107,7 +107,7 @@ def main():
 
     parser.add_argument('-u', '--users',
                         nargs='+',
-                        help='lits of user(s)',
+                        help='lists of user(s)',
                         required=True)
 
     parser.add_argument('-f', '--features',
